@@ -68,7 +68,7 @@ data_female<- data_v1%>%filter(Sex==1)
 data_male<- data_v1%>% filter(Sex==0)
 # p value greater than 0.05 so no significant difference 
 relCESD<- lm(CESD~BirthControl, data=data_female, na.action = na.exclude)
-
+summary(relCESD)
 ## Now going to run the full linear model for females, accounting for the interaction effect of  birth control for all predictiors, as well as the anova on the linear model 
 library(broom)
 library(car)
@@ -295,6 +295,26 @@ plot(lm_tress_shame_sig)
 plot_model(lm_tress_shame_sig, type = "diag")
 plot_model(lm_tress_shame_sig, type = "std")
 ##Interaction is significant (0.05)
+
+
+###Hormones and stress/shame for MALES
+
+#shame AUCg
+lm_m_tot_shame_sig<-lm(data=data_male,CESD~(D2VAS1_Shame+D2VAS2_Shame+D2VAS3_Shame+D2VAS4_Shame+D2VAS5_Shame)*(D2_Cortisol_AUC_g+D2_Testosterone_AUC_g+D2_Progesterone_AUC_g+D2_Estradiol_AUC_g))
+summary(lm_m_tot_shame_sig)
+
+#Stress AUCg
+lm_m_tot_stress_sig<-lm(data=data_male,CESD~(D2VAS1_Stress+D2VAS2_Stress+D2VAS3_Stress+D2VAS4_Stress+D2VAS5_Stress)*(D2_Cortisol_AUC_g+D2_Testosterone_AUC_g+D2_Progesterone_AUC_g+D2_Estradiol_AUC_g))
+summary(lm_m_tot_stress_sig) 
+  
+#Shame AUCi
+lm_m_tot_shame_sig_i<-lm(data=data_male,CESD~(D2VAS1_Shame+D2VAS2_Shame+D2VAS3_Shame+D2VAS4_Shame+D2VAS5_Shame)*(D2_Cortisol_AUC_i+D2_Testosterone_AUC_i+D2_Progesterone_AUC_i+D2_Estradiol_AUC_i))
+summary(lm_m_tot_shame_sig_i)
+
+#Stress AUCi
+lm_m_tot_stress_sig_i<-lm(data=data_male,CESD~(D2VAS1_Stress+D2VAS2_Stress+D2VAS3_Stress+D2VAS4_Stress+D2VAS5_Stress)*(D2_Cortisol_AUC_i+D2_Testosterone_AUC_i+D2_Progesterone_AUC_i+D2_Estradiol_AUC_i))
+summary(lm_m_tot_stress_sig_i) 
+
 
 ```
 
