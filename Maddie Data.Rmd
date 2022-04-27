@@ -1,0 +1,215 @@
+---
+title: "Maddie Divine Data Analysis"
+author: "Madison Pickett"
+date: "4/25/2022"
+output: html_document
+---
+
+```{r setup}
+library(dplyr)
+library(tidyverse)
+library(knitr)
+library(ggplot2)
+library(skimr)
+f<- "https://raw.githubusercontent.com/mrpickett26/Helping-Maddie/main/M%20Divine%20VC%20Psychfest%20Data.csv?token=GHSAT0AAAAAABT7I3ZLQOD4EFHOHZZPMJSSYTIZICQ"
+d<- read_csv(f, col_names=TRUE)
+d <-d %>% dplyr::select(Sex,BirthControl,D2S1_Cortisol,D2S1_Testosterone,D2S1_Progesterone,D2S1_Estradiol,D2S2_Cortisol,D2S2_Testosterone,D2S2_Progesterone,D2S2_Estradiol,D2S3_Cortisol,D2S3_Testosterone,D2S3_Progesterone,D2S3_Estradiol,D2VAS1_Stress,D2VAS1_Shame,D2VAS2_Stress,D2VAS2_Shame,D2VAS3_Stress,D2VAS3_Shame,D2VAS4_Stress,D2VAS4_Shame,D2VAS5_Stress,D2VAS5_Shame,CESD)
+d %>% group_by(Sex) %>% summarise_all(~min(.x,na.rm=TRUE))
+d<- d %>% mutate(Sex = Sex -1)
+d<-d %>% mutate(BirthControl = replace_na(BirthControl,0))
+data_v1<- d %>% mutate(
+  #adjusts minimum for each gender to be 1 by shifting all values over
+  across(ends_with("Cortisol"),~ifelse(Sex == 1, .+(1-0.1031219), .+(1-0.3446964))),
+  across(ends_with("Progesterone"),~ifelse(Sex == 1, .+(1- 0.46972), .+(1-0.68095))),
+  across(ends_with("Estradiol"),~ifelse(Sex == 1, .+(1- 0.31000  ), .+(1-0.31622)))
+  ) %>% mutate(
+    #takes the log of all the hormones for all 3 periods in D2
+    across(starts_with("D2S"),~log(.))
+  )
+
+fn_auc_g = function(s1,s2,s3){
+  (s1+s2)*40/2 + (s2+s3)*15/2
+}
+fn_auc_i = function(s1,s2,s3){
+  (s1+s2)*40/2 + (s2+s3)*15/2 - s1*(55)
+}
+
+data_v1 <-data_v1 %>% mutate(D2_Cortisol_AUC_i = fn_auc_i(D2S1_Cortisol,D2S2_Cortisol,D2S3_Cortisol),
+                   D2_Cortisol_AUC_g = fn_auc_g(D2S1_Cortisol,D2S2_Cortisol,D2S3_Cortisol),
+                   D2_Testosterone_AUC_i = fn_auc_i(D2S1_Testosterone,D2S2_Testosterone,D2S3_Testosterone),
+                   D2_Testosterone_AUC_g = fn_auc_g(D2S1_Testosterone,D2S2_Testosterone,D2S3_Testosterone),
+                   D2_Progesterone_AUC_i = fn_auc_i(D2S1_Progesterone,D2S2_Progesterone,D2S3_Progesterone),
+                   D2_Progesterone_AUC_g = fn_auc_g(D2S1_Progesterone,D2S2_Progesterone,D2S3_Progesterone),
+                   D2_Estradiol_AUC_i = fn_auc_i(D2S1_Estradiol,D2S2_Estradiol,D2S3_Estradiol),
+                   D2_Estradiol_AUC_g = fn_auc_g(D2S1_Estradiol,D2S2_Estradiol,D2S3_Estradiol)
+                   )
+
+hist(data_v1$CESD)
+hist(data_v1$D2_Cortisol_AUC_i)
+hist(data_v1$D2_Cortisol_AUC_g)
+hist(data_v1$D2_Progesterone_AUC_i)
+hist(data_v1$D2_Progesterone_AUC_g)
+hist(data_v1$D2_Testosterone_AUC_i)
+hist(data_v1$D2_Estradiol_AUC_i)
+hist(data_v1$D2_Estradiol_AUC_g)
+
+# library(GGally)
+# ggpairs(data_v1 %>% filter(Sex==1), columns = c("CESD","D2_Cortisol_AUC_i","D2_Testosterone_AUC_i","D2_Estradiol_AUC_i","D2_Progesterone_AUC_i"))
+# 
+# ggpairs(data_v1 %>% filter(Sex==0), columns = c("CESD","D2_Cortisol_AUC_i","D2_Testosterone_AUC_i","D2_Estradiol_AUC_i","D2_Progesterone_AUC_i"))
+# 
+# ggpairs(data_v1 %>% filter(Sex==1), columns = c("CESD","D2_Cortisol_AUC_g","D2_Testosterone_AUC_g","D2_Estradiol_AUC_g","D2_Progesterone_AUC_g"))
+
+# Cesd predicted by sex
+m1<- lm(data=data_v1, CESD~Sex)
+summary(m1)
+
+data_female<- data_v1%>%filter(Sex==1)
+data_male<- data_v1%>% filter(Sex==0)
+# p value greater than 0.05 so no significant difference 
+relCESD<- lm(CESD~BirthControl, data=data_female, na.action = na.exclude)
+
+
+library(broom)
+library(car)
+lm_cortisol_bc_i<-lm(data=data_female,CESD~(BirthControl*(D2_Cortisol_AUC_i+D2_Testosterone_AUC_i+D2_Progesterone_AUC_i+D2_Estradiol_AUC_i)))
+summary(lm_cortisol_bc_i)
+
+plot(fitted(lm_cortisol_bc_i), residuals(lm_cortisol_bc_i))
+hist(residuals(lm_cortisol_bc_i))
+qqnorm(residuals(lm_cortisol_bc_i))
+qqline(residuals(lm_cortisol_bc_i))
+m.aov_i <- Anova(lm_cortisol_bc_i, type = "II")
+m.aov_i
+
+
+
+lm_cortisol_bc_g<-lm(data=data_female,CESD~(BirthControl*(D2_Cortisol_AUC_g+D2_Testosterone_AUC_g+D2_Progesterone_AUC_g+D2_Estradiol_AUC_g)))
+summary(lm_cortisol_bc_g)
+
+plot(fitted(lm_cortisol_bc_g), residuals(lm_cortisol_bc_g))
+hist(residuals(lm_cortisol_bc_g))
+qqnorm(residuals(lm_cortisol_bc_g))
+qqline(residuals(lm_cortisol_bc_g))
+m.aov_g <- Anova(lm_cortisol_bc_g, type = "II")
+m.aov_g
+
+lm_male_g<-lm(data=data_male,CESD~(D2_Cortisol_AUC_g+D2_Testosterone_AUC_g+D2_Progesterone_AUC_g+D2_Estradiol_AUC_g))
+summary(lm_male_g)
+
+plot(fitted(lm_male_g), residuals(lm_male_g))
+hist(residuals(lm_male_g))
+qqnorm(residuals(lm_male_g))
+qqline(residuals(lm_male_g))
+male.aov_g <- Anova(lm_male_g, type = "II")
+male.aov_g
+
+
+lm_male_i<-lm(data=data_male,CESD~(D2_Cortisol_AUC_i+D2_Testosterone_AUC_i+D2_Progesterone_AUC_i+D2_Estradiol_AUC_i))
+summary(lm_male_i)
+
+plot(fitted(lm_male_i), residuals(lm_male_i))
+hist(residuals(lm_male_i))
+qqnorm(residuals(lm_male_i))
+qqline(residuals(lm_male_i))
+male.aov_i <- Anova(lm_male_i, type = "II")
+male.aov_i
+
+
+
+Male_Estradiol_g<- data_male$D2_Estradiol_AUC_g
+Male_Test_g<- data_male$D2_Testosterone_AUC_g
+Male_Cort_g<- data_male$D2_Cortisol_AUC_g
+Male_Proges_g<- data_male$D2_Progesterone_AUC_g
+Male_Estradiol_i<- data_male$D2_Estradiol_AUC_i
+Male_Test_i<- data_male$D2_Testosterone_AUC_i
+Male_Cort_i<- data_male$D2_Cortisol_AUC_i
+Male_Proges_i<- data_male$D2_Progesterone_AUC_i
+Male_Estradiol_g_norm <- rnorm(200,mean=mean(Male_Estradiol_g, na.rm=TRUE), sd=sd(Male_Estradiol_g, na.rm=TRUE))
+Male_Test_g_norm <- rnorm(200,mean=mean(Male_Test_g, na.rm=TRUE), sd=sd(Male_Test_g, na.rm=TRUE))
+Male_Cort_g_norm <- rnorm(200,mean=mean(Male_Cort_g, na.rm=TRUE), sd=sd(Male_Cort_g, na.rm=TRUE))
+Male_Proges_g_norm <- rnorm(200,mean=mean(Male_Proges_g, na.rm=TRUE), sd=sd(Male_Proges_g, na.rm=TRUE))
+Male_Estradiol_i_norm <- rnorm(200,mean=mean(Male_Estradiol_i, na.rm=TRUE), sd=sd(Male_Estradiol_g, na.rm=TRUE))
+Male_Test_i_norm <- rnorm(200,mean=mean(Male_Test_i, na.rm=TRUE), sd=sd(Male_Test_g, na.rm=TRUE))
+Male_Cort_i_norm <- rnorm(200,mean=mean(Male_Cort_i, na.rm=TRUE), sd=sd(Male_Cort_g, na.rm=TRUE))
+Male_Proges_i_norm <- rnorm(200,mean=mean(Male_Proges_i, na.rm=TRUE), sd=sd(Male_Proges_g, na.rm=TRUE))
+
+plot(x=data_male$CESD, y=Male_Estradiol_g,Male_Estradiol_i, Male_Test_g,Male_Test_i, Male_Cort_g, Male_Cort_i,Male_Proges_g,Male_Proges_i, na.rm=FALSE)
+main = "Male Hormone Levels",
+at = c(1,2,4,5),
+names = c("AUCg Estradiol", "AUCi Estradiol", "AUCg Testosterone","AUCi Testosterone", "AUCg Cortisol","AUCi Cortisol", "AUCg Progresterone","AUCi Progresterone"),
+las = 2,
+col = c("orange","red"),
+border = "brown",
+horizontal = FALSE,
+notch = TRUE
+)
+
+# data_female<-data_female%>%mutate(
+#   resid_CESD=residuals(relCESD)
+# )
+# 
+# m_null<-lm(data=data_female, resid_CESD~1)
+# summary(m_null)
+# 
+# add1(m_null, scope=.~.+D2_Cortisol_AUC_g+D2_Testosterone_AUC_g+D2_Progesterone_AUC_g+D2_Estradiol_AUC_g, test="F")
+# 
+# m2<-update(m_null, formula=.~. +D2_Testosterone_AUC_g)
+# add1(m2, scope=.~.+D2_Cortisol_AUC_g+D2_Progesterone_AUC_g+D2_Estradiol_AUC_g, test="F")
+# 
+# m3<-update(m2, formula=.~. +D2_Estradiol_AUC_g)
+# add1(m3, scope=.~.+D2_Cortisol_AUC_g+D2_Progesterone_AUC_g, test="F")
+# m4<-update(m3, formula=.~. +D2_Progesterone_AUC_g)
+# add1(m4, scope=.~.+D2_Cortisol_AUC_g, test="F")
+# 
+# 
+#   lm(data=data_female, resid_CESD~D2_Cortisol_AUC_g+D2_Testosterone_AUC_g+D2_Progesterone_AUC_g+D2_Estradiol_AUC_g)
+# summary(m_full)
+# 
+# 
+# m2<- lm(data=data_female, CESD~BirthControl)
+# summary(m2)
+# 
+# m3<- lm(data=data_female, CESD~BirthControl+)
+# summary(m3)
+# 
+# m2<- lm(data=data_v1, CESD~ logRange+Migration)
+# m3<- lm(data=data_v1, CESD~logRange)
+# m4<- lm(data=data_v1, CESD~Migration)
+# m5<- lm(data=d, CESD~1)
+# 
+# anova(m1,m2, test="F")
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+library(DescTools)
+AUC(x, y, from = min(x, na.rm = TRUE), to = max(x, na.rm = TRUE), 
+    method = c("trapezoid", "step", "spline", "linear"), 
+    absolutearea = FALSE, subdivisions = 100, na.rm = FALSE, ...)```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+
+#one way anova
+m.aov <- aov(data = z, zombies_killed ~ occupation)
+summary(m.aov) 
+
+
+## suicidal people come in and they stress them out with a task. measure hormone with spit once at baseline twice after. curve of hormone levels in response to acute stress. one with ground truth one with the initial point. predictors we are predicting for cesd. 
+
+#AUC outputs 
+# 
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
