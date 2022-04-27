@@ -5,13 +5,13 @@ date: "4/25/2022"
 output: html_document
 ---
 
-```{r setup}
+```{r}
 library(dplyr)
 library(tidyverse)
 library(knitr)
 library(ggplot2)
 library(skimr)
-f<- "https://raw.githubusercontent.com/mrpickett26/Helping-Maddie/main/M%20Divine%20VC%20Psychfest%20Data.csv?token=GHSAT0AAAAAABT7I3ZLQOD4EFHOHZZPMJSSYTIZICQ"
+f<- "https://raw.githubusercontent.com/mrpickett26/Helping-Maddie/main/M%20Divine%20VC%20Psychfest%20Data.csv"
 d<- read_csv(f, col_names=TRUE)
 d <-d %>% dplyr::select(Sex,BirthControl,D2S1_Cortisol,D2S1_Testosterone,D2S1_Progesterone,D2S1_Estradiol,D2S2_Cortisol,D2S2_Testosterone,D2S2_Progesterone,D2S2_Estradiol,D2S3_Cortisol,D2S3_Testosterone,D2S3_Progesterone,D2S3_Estradiol,D2VAS1_Stress,D2VAS1_Shame,D2VAS2_Stress,D2VAS2_Shame,D2VAS3_Stress,D2VAS3_Shame,D2VAS4_Stress,D2VAS4_Shame,D2VAS5_Stress,D2VAS5_Shame,CESD)
 d %>% group_by(Sex) %>% summarise_all(~min(.x,na.rm=TRUE))
@@ -69,7 +69,7 @@ data_male<- data_v1%>% filter(Sex==0)
 # p value greater than 0.05 so no significant difference 
 relCESD<- lm(CESD~BirthControl, data=data_female, na.action = na.exclude)
 
-
+## Now going to run the full linear model for females, accounting for the interaction effect of  birth control for all predictiors, as well as the anova on the linear model 
 library(broom)
 library(car)
 lm_cortisol_bc_i<-lm(data=data_female,CESD~(BirthControl*(D2_Cortisol_AUC_i+D2_Testosterone_AUC_i+D2_Progesterone_AUC_i+D2_Estradiol_AUC_i)))
@@ -81,9 +81,9 @@ qqnorm(residuals(lm_cortisol_bc_i))
 qqline(residuals(lm_cortisol_bc_i))
 m.aov_i <- Anova(lm_cortisol_bc_i, type = "II")
 m.aov_i
+## In this case we see significance in differences in CESD scores from cortisol as a predictor alone (0.9 sig), Progesterone with BC accounting for interaction effects (0.95), and Estradiol accounting for BC interaction effects (0.99)
 
-
-
+#Now I will do the same for the AUCg, sorry the variables are fucked 
 lm_cortisol_bc_g<-lm(data=data_female,CESD~(BirthControl*(D2_Cortisol_AUC_g+D2_Testosterone_AUC_g+D2_Progesterone_AUC_g+D2_Estradiol_AUC_g)))
 summary(lm_cortisol_bc_g)
 
@@ -93,7 +93,9 @@ qqnorm(residuals(lm_cortisol_bc_g))
 qqline(residuals(lm_cortisol_bc_g))
 m.aov_g <- Anova(lm_cortisol_bc_g, type = "II")
 m.aov_g
+##In this case we see significance in differences in Estradiol with BC for CESD score response accounting for interaction effects (0.9), and Progesterone accounting for BC interaction effects (0.99)
 
+##Now moving on to Male AUCg
 lm_male_g<-lm(data=data_male,CESD~(D2_Cortisol_AUC_g+D2_Testosterone_AUC_g+D2_Progesterone_AUC_g+D2_Estradiol_AUC_g))
 summary(lm_male_g)
 
@@ -103,8 +105,9 @@ qqnorm(residuals(lm_male_g))
 qqline(residuals(lm_male_g))
 male.aov_g <- Anova(lm_male_g, type = "II")
 male.aov_g
+##No reported significant difference in Hormone Levels with respect to CESD scores
 
-
+#Now moving on to Malue AUCi
 lm_male_i<-lm(data=data_male,CESD~(D2_Cortisol_AUC_i+D2_Testosterone_AUC_i+D2_Progesterone_AUC_i+D2_Estradiol_AUC_i))
 summary(lm_male_i)
 
@@ -114,36 +117,89 @@ qqnorm(residuals(lm_male_i))
 qqline(residuals(lm_male_i))
 male.aov_i <- Anova(lm_male_i, type = "II")
 male.aov_i
+##No reported significant difference in Hormone Levels with respect to CESD scores
+
+
+##Look at stressors with respect to hormones 
+lm_male_i_stress<-lm(data=data_male,CESD~(D2VAS1_Stress+D2VAS2_Stress+D2VAS3_Stress+D2VAS4_Stress+D2VAS5_Stress))
+summary(lm_male_i_stress)
+
+plot(fitted(lm_male_i_stress), residuals(lm_male_i_stress))
+hist(residuals(lm_male_i_stress))
+qqnorm(residuals(lm_male_i_stress))
+qqline(residuals(lm_male_i_stress))
+male.aov_i_stress <- Anova(lm_male_i_stress, type = "II")
+male.aov_i_stress
+#So for males only timepoint 2 is significant for differences in CESD scores
+
+##Now do this for Shame 
+lm_male_i_shame<-lm(data=data_male,CESD~(D2VAS1_Shame+D2VAS2_Shame+D2VAS3_Shame+D2VAS4_Shame+D2VAS5_Shame))
+summary(lm_male_i_shame)
+
+plot(fitted(lm_male_i_shame), residuals(lm_male_i_shame))
+hist(residuals(lm_male_i_shame))
+qqnorm(residuals(lm_male_i_shame))
+qqline(residuals(lm_male_i_shame))
+male.aov_i_shame <- Anova(lm_male_i_shame, type = "II")
+male.aov_i_shame
+#So for males only timepoint 3 is significant for shame for differences in CESD scores
+
+##Do the same for females
+lm_female_i_stress<-lm(data=data_female,CESD~(D2VAS1_Stress+D2VAS2_Stress+D2VAS3_Stress+D2VAS4_Stress+D2VAS5_Stress))
+summary(lm_female_i_stress)
+
+plot(fitted(lm_female_i_stress), residuals(lm_female_i_stress))
+hist(residuals(lm_female_i_stress))
+qqnorm(residuals(lm_female_i_stress))
+qqline(residuals(lm_female_i_stress))
+female.aov_i_stress <- Anova(lm_female_i_stress, type = "II")
+female.aov_i_stress
+#So for females only timepoint 3 (stress) is significant for differences in CESD scores
+
+#shame for females
+lm_female_i_shame<-lm(data=data_female,CESD~(D2VAS1_Shame+D2VAS2_Shame+D2VAS3_Shame+D2VAS4_Shame+D2VAS5_Shame))
+summary(lm_female_i_shame)
+
+plot(fitted(lm_female_i_shame), residuals(lm_female_i_shame))
+hist(residuals(lm_female_i_shame))
+qqnorm(residuals(lm_female_i_shame))
+qqline(residuals(lm_female_i_shame))
+female.aov_i_shame <- Anova(lm_female_i_shame, type = "II")
+female.aov_i_shame
 
 
 
-Male_Estradiol_g<- data_male$D2_Estradiol_AUC_g
-Male_Test_g<- data_male$D2_Testosterone_AUC_g
-Male_Cort_g<- data_male$D2_Cortisol_AUC_g
-Male_Proges_g<- data_male$D2_Progesterone_AUC_g
-Male_Estradiol_i<- data_male$D2_Estradiol_AUC_i
-Male_Test_i<- data_male$D2_Testosterone_AUC_i
-Male_Cort_i<- data_male$D2_Cortisol_AUC_i
-Male_Proges_i<- data_male$D2_Progesterone_AUC_i
-Male_Estradiol_g_norm <- rnorm(200,mean=mean(Male_Estradiol_g, na.rm=TRUE), sd=sd(Male_Estradiol_g, na.rm=TRUE))
-Male_Test_g_norm <- rnorm(200,mean=mean(Male_Test_g, na.rm=TRUE), sd=sd(Male_Test_g, na.rm=TRUE))
-Male_Cort_g_norm <- rnorm(200,mean=mean(Male_Cort_g, na.rm=TRUE), sd=sd(Male_Cort_g, na.rm=TRUE))
-Male_Proges_g_norm <- rnorm(200,mean=mean(Male_Proges_g, na.rm=TRUE), sd=sd(Male_Proges_g, na.rm=TRUE))
-Male_Estradiol_i_norm <- rnorm(200,mean=mean(Male_Estradiol_i, na.rm=TRUE), sd=sd(Male_Estradiol_g, na.rm=TRUE))
-Male_Test_i_norm <- rnorm(200,mean=mean(Male_Test_i, na.rm=TRUE), sd=sd(Male_Test_g, na.rm=TRUE))
-Male_Cort_i_norm <- rnorm(200,mean=mean(Male_Cort_i, na.rm=TRUE), sd=sd(Male_Cort_g, na.rm=TRUE))
-Male_Proges_i_norm <- rnorm(200,mean=mean(Male_Proges_i, na.rm=TRUE), sd=sd(Male_Proges_g, na.rm=TRUE))
 
-plot(x=data_male$CESD, y=Male_Estradiol_g,Male_Estradiol_i, Male_Test_g,Male_Test_i, Male_Cort_g, Male_Cort_i,Male_Proges_g,Male_Proges_i, na.rm=FALSE)
-main = "Male Hormone Levels",
-at = c(1,2,4,5),
-names = c("AUCg Estradiol", "AUCi Estradiol", "AUCg Testosterone","AUCi Testosterone", "AUCg Cortisol","AUCi Cortisol", "AUCg Progresterone","AUCi Progresterone"),
-las = 2,
-col = c("orange","red"),
-border = "brown",
-horizontal = FALSE,
-notch = TRUE
-)
+
+
+###Some things I tried out... didnt like it as much
+# Male_Estradiol_g<- data_male$D2_Estradiol_AUC_g
+# Male_Test_g<- data_male$D2_Testosterone_AUC_g
+# Male_Cort_g<- data_male$D2_Cortisol_AUC_g
+# Male_Proges_g<- data_male$D2_Progesterone_AUC_g
+# Male_Estradiol_i<- data_male$D2_Estradiol_AUC_i
+# Male_Test_i<- data_male$D2_Testosterone_AUC_i
+# Male_Cort_i<- data_male$D2_Cortisol_AUC_i
+# Male_Proges_i<- data_male$D2_Progesterone_AUC_i
+# Male_Estradiol_g_norm <- rnorm(200,mean=mean(Male_Estradiol_g, na.rm=TRUE), sd=sd(Male_Estradiol_g, na.rm=TRUE))
+# Male_Test_g_norm <- rnorm(200,mean=mean(Male_Test_g, na.rm=TRUE), sd=sd(Male_Test_g, na.rm=TRUE))
+# Male_Cort_g_norm <- rnorm(200,mean=mean(Male_Cort_g, na.rm=TRUE), sd=sd(Male_Cort_g, na.rm=TRUE))
+# Male_Proges_g_norm <- rnorm(200,mean=mean(Male_Proges_g, na.rm=TRUE), sd=sd(Male_Proges_g, na.rm=TRUE))
+# Male_Estradiol_i_norm <- rnorm(200,mean=mean(Male_Estradiol_i, na.rm=TRUE), sd=sd(Male_Estradiol_g, na.rm=TRUE))
+# Male_Test_i_norm <- rnorm(200,mean=mean(Male_Test_i, na.rm=TRUE), sd=sd(Male_Test_g, na.rm=TRUE))
+# Male_Cort_i_norm <- rnorm(200,mean=mean(Male_Cort_i, na.rm=TRUE), sd=sd(Male_Cort_g, na.rm=TRUE))
+# Male_Proges_i_norm <- rnorm(200,mean=mean(Male_Proges_i, na.rm=TRUE), sd=sd(Male_Proges_g, na.rm=TRUE))
+# 
+# plot(x=data_male$CESD, y=Male_Estradiol_g,Male_Estradiol_i, Male_Test_g,Male_Test_i, Male_Cort_g, Male_Cort_i,Male_Proges_g,Male_Proges_i, na.rm=FALSE)
+# main = "Male Hormone Levels",
+# at = c(1,2,4,5),
+# names = c("AUCg Estradiol", "AUCi Estradiol", "AUCg Testosterone","AUCi Testosterone", "AUCg Cortisol","AUCi Cortisol", "AUCg Progresterone","AUCi Progresterone"),
+# las = 2,
+# col = c("orange","red"),
+# border = "brown",
+# horizontal = FALSE,
+# notch = TRUE
+
 
 # data_female<-data_female%>%mutate(
 #   resid_CESD=residuals(relCESD)
@@ -188,27 +244,57 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 ```{r cars}
-library(DescTools)
-AUC(x, y, from = min(x, na.rm = TRUE), to = max(x, na.rm = TRUE), 
-    method = c("trapezoid", "step", "spline", "linear"), 
-    absolutearea = FALSE, subdivisions = 100, na.rm = FALSE, ...)```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-
-#one way anova
-m.aov <- aov(data = z, zombies_killed ~ occupation)
-summary(m.aov) 
+#So for females only timepoint 3 (shame) is significant for differences in CESD scores, VERY signifcant (want to emphasize this 0.999)
+library(sjPlot)
+library(sjmisc)
+library(ggplot2)
+theme_set(theme_sjplot())
 
 
-## suicidal people come in and they stress them out with a task. measure hormone with spit once at baseline twice after. curve of hormone levels in response to acute stress. one with ground truth one with the initial point. predictors we are predicting for cesd. 
+#Now it only makes sense to look at hormonal female data and discuss it, run the signigicant linear models
 
-#AUC outputs 
-# 
+#Do this for the female AUCi significant data
+lm_cortisol_i_sig<-lm(data=data_female,CESD~(BirthControl*(D2_Cortisol_AUC_i)))
+summary(lm_cortisol_i_sig)
+plot(lm_cortisol_i_sig)
+plot_model(lm_cortisol_i_sig, type = "diag")
+plot_model(lm_cortisol_i_sig, type = "std")
+
+lm_estradiol_i_sig<-lm(data=data_female,CESD~(BirthControl*(D2_Estradiol_AUC_i)))
+summary(lm_estradiol_i_sig)
+plot(lm_estradiol_i_sig)
+
+plot_model(lm_estradiol_i_sig, type = "diag")
+plot_model(lm_estradiol_i_sig, type = "std")
+
+lm_proges_i_sig<-lm(data=data_female,CESD~(BirthControl*(D2_Progesterone_AUC_i)))
+summary(lm_proges_i_sig)
+plot(lm_proges_i_sig)
+plot_model(lm_proges_i_sig, type = "diag")
+plot_model(lm_proges_i_sig, type = "std")
+
+#Do Do this for the female AUCg significant data
+
+lm_estradiol_g_sig<-lm(data=data_female,CESD~(BirthControl*(D2_Estradiol_AUC_g)))
+summary(lm_estradiol_g_sig)
+plot(lm_estradiol_g_sig)
+plot_model(lm_estradiol_g_sig, type = "diag")
+plot_model(lm_estradiol_g_sig, type = "std")
+
+
+lm_proges_g_sig<-lm(data=data_female,CESD~(BirthControl*(D2_Progesterone_AUC_g)))
+summary(lm_proges_g_sig)
+plot(lm_proges_g_sig)
+plot_model(lm_proges_g_sig, type = "diag")
+plot_model(lm_proges_g_sig, type = "std")
+
+## Interesting to look at interaction effect of shame and stress of females on CESD at timepoint 3, run a linear model to do that 
+lm_tress_shame_sig<-lm(data=data_female,CESD~(D2VAS3_Shame*D2VAS3_Stress))
+summary(lm_tress_shame_sig)
+plot(lm_tress_shame_sig)
+plot_model(lm_tress_shame_sig, type = "diag")
+plot_model(lm_tress_shame_sig, type = "std")
+##Interaction is significant (0.05)
 
 ```
 
